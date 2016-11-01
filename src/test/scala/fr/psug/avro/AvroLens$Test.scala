@@ -1,8 +1,8 @@
 package fr.psug.avro
 
 import org.apache.avro.SchemaBuilder
-import org.apache.avro.generic.GenericData.Array
-import org.apache.avro.generic.{GenericData, GenericRecordBuilder}
+import org.apache.avro.generic.GenericData.{Array, Record}
+import org.apache.avro.generic.{GenericData, GenericRecord, GenericRecordBuilder}
 import org.scalatest.{FlatSpec, Matchers}
 
 class AvroLens$Test extends FlatSpec with Matchers {
@@ -23,7 +23,6 @@ class AvroLens$Test extends FlatSpec with Matchers {
       .set("inner", new GenericRecordBuilder(innerSchema).set("name", "toto").build())
       .build()
 
-    println(record.toString)
     val transformer = AvroLens.defineWithSideEffect[String]("inner.name", _.toUpperCase)
     transformer(record)
     record.toString should be ("""{"inner": {"name": "TOTO"}}""")
@@ -38,13 +37,12 @@ class AvroLens$Test extends FlatSpec with Matchers {
     import scala.collection.JavaConverters._
     val record = new Array[String](schema, List("toto", "titi").asJava)
 
-    println(record.toString)
     val transformer = AvroLens.defineWithSideEffect[String]("", _.toUpperCase)
     transformer(record)
     record.toString should be ("""[TOTO, TITI]""")
   }
 
-  it should "handle nested arrays of nested records values" in {
+  it should "handle nested array of simple values" in {
     val arraySchema = SchemaBuilder
       .array()
       .items()
@@ -61,9 +59,44 @@ class AvroLens$Test extends FlatSpec with Matchers {
       .set("ingredients", new Array[String](arraySchema, List("toto", "titi").asJava))
       .build()
 
-    println(record.toString)
     val transformer = AvroLens.defineWithSideEffect[String]("ingredients", _.toUpperCase)
     transformer(record)
     record.toString should be ("""{"ingredients": ["TOTO", "TITI"]}""")
+  }
+
+  it should "handle nested arrays of nested records values" in {
+    val innerRecordSchema = SchemaBuilder
+      .record("Item")
+      .fields()
+      .name("pos").`type`().stringType().noDefault()
+      .endRecord()
+
+    val arraySchema = SchemaBuilder
+      .array()
+      .items(innerRecordSchema)
+
+
+    val schema = SchemaBuilder
+      .record("Person")
+      .fields()
+      .name("ingredients").`type`(arraySchema).noDefault()
+      .endRecord()
+
+    import scala.collection.JavaConverters._
+    val record = new GenericRecordBuilder(schema)
+      .set("ingredients", new Array[Record](arraySchema,
+        List(
+          new GenericRecordBuilder(innerRecordSchema)
+            .set("pos", "toto")
+            .build(),
+          new GenericRecordBuilder(innerRecordSchema)
+            .set("pos", "titi")
+            .build()
+        ).asJava))
+      .build()
+
+    val transformer = AvroLens.defineWithSideEffect[String]("ingredients.pos", _.toUpperCase)
+    transformer(record)
+    record.toString should be ("""{"ingredients": [{"pos": "TOTO"}, {"pos": "TITI"}]}""")
   }
 }

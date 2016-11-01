@@ -1,7 +1,7 @@
 package fr.psug.avro
 
 import org.apache.avro.Schema
-import org.apache.avro.generic.{GenericArray, GenericContainer, GenericRecord}
+import org.apache.avro.generic._
 
 import scala.reflect.ClassTag
 
@@ -11,7 +11,7 @@ object AvroLens {
   /**
     * Creates a 'Lens' that will mutate in-place your GenericRecord
     *
-    * @param path the path that will be transformed
+    * @param path      the path that will be transformed
     * @param transform the lambda that will be applied to mutate the target value
     * @tparam A type of the value expected
     * @return nothing - everything is modified using the dark (but effective) side of the force
@@ -31,12 +31,11 @@ object AvroLens {
                   casted.set(i, transform(casted.get(i)))
 
               case in: GenericRecord =>
-                val casted = array.asInstanceOf[GenericArray[GenericRecord]]
+                val casted = array.asInstanceOf[GenericArray[IndexedRecord]]
                 for (i <- 0 until array.size())
-                  matchAndReplace(casted.get(i), paths.tail, None)
+                  matchAndReplace(casted.get(i), paths, None)
             }
           }
-
 
         case rec: GenericRecord =>
           rec.get(paths.head) match {
@@ -46,6 +45,7 @@ object AvroLens {
             case other: GenericContainer =>
               matchAndReplace(other, paths.tail, Some((paths.head, rec)))
           }
+
         case value: A =>
           val (fieldName, record) = parent.get
           record.put(fieldName, transform(value))
@@ -61,31 +61,20 @@ object AvroLens {
   }
 
 
-  def defineTransformer[A: ClassTag, B](path: String,
-                                        transform: A => B,
-                                        schema: Schema): (GenericRecord => GenericRecord) = {
-    (record: GenericRecord) => {
-      val subPaths = path.split('.')
-      subPaths.foldLeft(record) { (currentLevel, nextPath) =>
-        currentLevel.get(nextPath) match {
-          case rec: GenericRecord =>
-            rec
-
-          case value: A =>
-            val updated = transform(value)
-            currentLevel.put(nextPath, updated)
-            record
-
-          case _ =>
-            throw new IllegalStateException(s"Found unexpected type while going through path $path")
-        }
-      }
+  def defineWithSideEffectAndSchema[A](path: String,
+                                       transform: A => A,
+                                       schema: Schema)(implicit tag: ClassTag[A]): (GenericContainer => Unit) = {
+    checkPath(path, schema)
+    (record: GenericContainer) => {
+      GenericData.get().validate(schema, record)
+      defineWithSideEffect(path, transform)(tag)(record)
     }
   }
 
-  def checkPath(path: String, schema: Schema) = ???
-}
-
-class AvroLens {
-
+  def checkPath(path: String, schema: Schema) = {
+    val subPaths = path.split('.')
+    subPaths.foldLeft(schema) { (current, name) =>
+      current.getField(name).schema()
+    }
+  }
 }
