@@ -43,4 +43,27 @@ class AvroLens$Test extends FlatSpec with Matchers {
     transformer(record)
     record.toString should be ("""[TOTO, TITI]""")
   }
+
+  it should "handle nested arrays of nested records values" in {
+    val arraySchema = SchemaBuilder
+      .array()
+      .items()
+      .stringType()
+
+    val schema = SchemaBuilder
+      .record("Person")
+      .fields()
+      .name("ingredients").`type`(arraySchema).noDefault()
+      .endRecord()
+
+    import scala.collection.JavaConverters._
+    val record = new GenericRecordBuilder(schema)
+      .set("ingredients", new Array[String](arraySchema, List("toto", "titi").asJava))
+      .build()
+
+    println(record.toString)
+    val transformer = AvroLens.defineWithSideEffect[String]("ingredients", _.toUpperCase)
+    transformer(record)
+    record.toString should be ("""{"ingredients": ["TOTO", "TITI"]}""")
+  }
 }

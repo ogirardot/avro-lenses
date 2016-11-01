@@ -25,7 +25,7 @@ object AvroLens {
         case array: GenericArray[_] =>
           if (!array.isEmpty) {
             array.get(0) match {
-              case in: A if paths.size == 1 =>
+              case in: A if paths.size == 1 || paths.isEmpty =>
                 val casted = array.asInstanceOf[GenericArray[A]]
                 for (i <- 0 until array.size())
                   casted.set(i, transform(casted.get(i)))
