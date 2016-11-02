@@ -1,4 +1,4 @@
-# Avro-Lenses [![Build Status](https://travis-ci.org/ogirardot/avro-lenses.svg?branch=master)](https://travis-ci.org/ogirardot/avro-lenses)
+# Avro-Lenses [![Build Status](https://travis-ci.org/ogirardot/avro-lenses.svg?branch=master)](https://travis-ci.org/ogirardot/avro-lenses)[![Coverage Status](https://coveralls.io/repos/github/ogirardot/avro-lenses/badge.svg?branch=master)](https://coveralls.io/github/ogirardot/avro-lenses?branch=master)
 A started draft of a runtime Lenses implementation for mutating or creating transformed GenericRecords
 
 ## How to use
