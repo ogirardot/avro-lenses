@@ -18,4 +18,21 @@ resolvers += Resolver.sonatypeRepo("releases")
 libraryDependencies += "fr.psug.avro" %% "avro-lenses" % "0.1.0"
 ```
 
-For now there is no official release, just a snapshot.
+## In Practice
+```
+// here for example we define a transformer that will transform toUpperCase the field 'name' of struct 'person'
+import fr.psug.avro.AvroLens._
+
+val transformer = defineWithSideEffect[String]("a.b", _.toUpperCase)
+// then you can apply it 'transformer' on any generic record and it will be mutated in place
+
+// If you want additional safety you can use it providing the Schema : 
+val transformer = defineWithSideEffectAndSchema[String]("a.b", _.toUpperCase, schema)
+```
+
+For more use cases, you can check out the unit tests that contains exhaustive tests of all the features.
+The `path` is quite intuitive and conforms **almost** to the JSONPath standard : 
+
+* `a.b.c` will refer to the field/array `c` of struct `b` of struct `a`
+* `a[]` will refer to the array inside of field `a`
+ 
