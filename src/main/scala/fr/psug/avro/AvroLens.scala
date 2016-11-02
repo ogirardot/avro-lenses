@@ -61,6 +61,16 @@ object AvroLens {
   }
 
 
+  /**
+    * Creates a 'Lens' that will mutate in-place your GenericRecord with addition Schema / Path checking
+    *
+    * @param path      the path that will be transformed
+    * @param transform the lambda that will be applied to mutate the target value
+    * @param schema    the schema that will be used to check the path against
+    * @tparam A type of the value expected
+    * @return nothing - everything is modified using the dark (but effective) side of the force
+
+    */
   def defineWithSideEffectAndSchema[A](path: String,
                                        transform: A => A,
                                        schema: Schema)(implicit tag: ClassTag[A]): (GenericContainer => Unit) = {
@@ -74,7 +84,14 @@ object AvroLens {
   def checkPath(path: String, schema: Schema) = {
     val subPaths = path.replace("[]", "").split('.')
     subPaths.foldLeft(schema) { (current, name) =>
-      current.getField(name).schema()
+      Option(current.getField(name)) match {
+        case Some(field) =>
+          field.schema()
+
+        case None =>
+          throw new IllegalStateException(s"Path '$path' does not exist according to schema ${schema.toString(true)}")
+      }
+
     }
   }
 }

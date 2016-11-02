@@ -7,7 +7,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class AvroLens$Test extends FlatSpec with Matchers {
 
-  it should "handle nested record" in {
+  "defineWithSideEffect" should "handle nested record" in {
     val innerSchema = SchemaBuilder.
       record("Name")
       .fields()
@@ -134,5 +134,30 @@ class AvroLens$Test extends FlatSpec with Matchers {
     val transformer = AvroLens.defineWithSideEffect[String]("ingredients[].pos", _.toUpperCase)
     transformer(record)
     record.toString should be ("""{"ingredients": [{"pos": "TOTO"}, {"pos": "TITI"}]}""")
+  }
+
+  "defineWithSideEffectAndSchema" should "check bad path from schema" in {
+    val innerSchema = SchemaBuilder.
+      record("Name")
+      .fields()
+      .name("name").`type`().stringType().noDefault().endRecord()
+
+    val schema = SchemaBuilder
+      .record("person")
+      .fields()
+      .name("inner").`type`(innerSchema).noDefault()
+      .endRecord()
+
+    val record = new GenericRecordBuilder(schema)
+      .set("inner", new GenericRecordBuilder(innerSchema).set("name", "toto").build())
+      .build()
+
+    val transformer = AvroLens.defineWithSideEffectAndSchema[String]("inner.name", _.toUpperCase, schema)
+    transformer(record)
+    record.toString should be ("""{"inner": {"name": "TOTO"}}""")
+
+    intercept[IllegalStateException] {
+      AvroLens.defineWithSideEffectAndSchema[String]("inner.bad_path.name", _.toUpperCase, schema)
+    }
   }
 }
