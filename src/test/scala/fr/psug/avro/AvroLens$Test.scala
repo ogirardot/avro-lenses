@@ -99,4 +99,40 @@ class AvroLens$Test extends FlatSpec with Matchers {
     transformer(record)
     record.toString should be ("""{"ingredients": [{"pos": "TOTO"}, {"pos": "TITI"}]}""")
   }
+
+  it should "handle nested arrays of nested records values with JSON Path expression" in {
+    val innerRecordSchema = SchemaBuilder
+      .record("Item")
+      .fields()
+      .name("pos").`type`().stringType().noDefault()
+      .endRecord()
+
+    val arraySchema = SchemaBuilder
+      .array()
+      .items(innerRecordSchema)
+
+
+    val schema = SchemaBuilder
+      .record("Person")
+      .fields()
+      .name("ingredients").`type`(arraySchema).noDefault()
+      .endRecord()
+
+    import scala.collection.JavaConverters._
+    val record = new GenericRecordBuilder(schema)
+      .set("ingredients", new Array[Record](arraySchema,
+        List(
+          new GenericRecordBuilder(innerRecordSchema)
+            .set("pos", "toto")
+            .build(),
+          new GenericRecordBuilder(innerRecordSchema)
+            .set("pos", "titi")
+            .build()
+        ).asJava))
+      .build()
+
+    val transformer = AvroLens.defineWithSideEffect[String]("ingredients[].pos", _.toUpperCase)
+    transformer(record)
+    record.toString should be ("""{"ingredients": [{"pos": "TOTO"}, {"pos": "TITI"}]}""")
+  }
 }

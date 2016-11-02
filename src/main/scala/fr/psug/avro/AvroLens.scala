@@ -55,7 +55,7 @@ object AvroLens {
       }
     }
     (record: GenericContainer) => {
-      val subPaths = path.split('.')
+      val subPaths = path.replace("[]", "").split('.')
       matchAndReplace(record, subPaths, None)
     }
   }
@@ -72,7 +72,7 @@ object AvroLens {
   }
 
   def checkPath(path: String, schema: Schema) = {
-    val subPaths = path.split('.')
+    val subPaths = path.replace("[]", "").split('.')
     subPaths.foldLeft(schema) { (current, name) =>
       current.getField(name).schema()
     }
